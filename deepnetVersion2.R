@@ -1,0 +1,236 @@
+
+##################PARTI I
+library("stringr")
+dataPath <- "E:/makaleler/makaleler/vulnerability/paper2/dataset/abot/abot.txt"
+yazi <- read.table(dataPath,header=TRUE,sep = ',')
+###we intend to create a center list vector consisting of every 20 words
+##find number of words
+wordLength <- length(yazi[,1])
+averageList <- c()
+###detect center word average
+i <- 1
+sumAverage <- 0
+averageUtf <- 0
+k <- 20
+while(k < wordLength){
+sumAverage <- 0
+averageUtf <- 0
+while(i <= k)
+{
+	utfResult <- utf8ToInt(yazi[i,1])
+	j <- 1
+	while(j<=length(utfResult))
+	{
+	averageUtf <- utfResult[j]+averageUtf
+	j <- j+1
+	}
+	averageUtf <- averageUtf/length(utfResult)
+	sumAverage <- sumAverage +averageUtf
+	i <- i+1
+}
+tmp <- sumAverage/20
+print(sumAverage/20)
+averageList <- append(averageList,tmp)
+k <- k+20
+}
+####end of detecting center word average
+
+######################replace inf with real value
+averageList[is.infinite(averageList)] = 108.6237
+#######################
+# k <- 1501
+#sum <- 0
+#while(k<=1520){
+#utfResult <- utf8ToInt(yazi[k,1])
+#averageUtf <- 0
+#i <- 1
+#while(i<=length(utfResult))
+#{
+#	averageUtf <- utfResult[i]+averageUtf
+#	i <- i+1
+#}
+
+#averageUtf <- averageUtf/length(utfResult)
+#sum <- sum+averageUtf
+#k <- k+1
+#}
+#print(sum/20)
+########calculate cosinus values depending on the center values############
+wordLength <- length(yazi[,1])
+library(matlib)
+matA <- matrix(c(3, 1), nrow = 2)  ##column vectors
+matB <- matrix(c(5, 5), nrow = 2)
+matA[1,1] <- 1
+matB[1,1] <- 1
+sum <- 0
+i <- 1
+k <- 1
+m <- 1
+cosVector <- c()
+while(k<=wordLength)
+{
+	j <- 1
+	while(j <= 20)
+	{
+		utfResult <- utf8ToInt(yazi[k,1])
+		while(m <= length(utfResult))
+		{
+		sum <- sum + utfResult[m]
+		m <- m+1
+		}
+		averageUtf <- sum/length(utfResult)
+		#matA mat B koy
+		matA[2,1] <- averageUtf
+		matB[2,1] <- averageList[i]
+		cosAngle <- angle(as.vector(matA), as.vector(matB)) 
+		cosVector <- append(cosVector,cosAngle)
+		j <- j+1
+		k <- k+1
+		sum <- 0
+		m <- 1
+	}
+	i <- i+1
+}
+if(is.na(cosVector[5829])){
+print("Na bulundu")
+}
+cosVector <- cosVector %>% replace(is.na(.), runif(1,0,0.04))
+cosVector <- cosVector[1:length(yazi[,1])]
+###convert from 0.00 to real angle values
+cosVector <- cosVector*1000
+##################PARTI II
+####library(aspace)
+####acos_d(theta = 90) is used to convert from angle to value
+######create labels with vulnerability matrix
+yazi <- read.table("E:/makaleler/makaleler/vulnerability/paper2/code/keyword.txt",header=TRUE,sep = ',')
+i <- 1
+lengthM <- length(yazi[,1])
+sum <- 0
+while(i<=lengthM)
+{
+		utfResult <- utf8ToInt(yazi[i,1])
+		j <- 1
+		tmpResult <- 0
+		while(j <= length(utfResult))
+		{
+					tmpResult <- tmpResult+utfResult[j]
+					print(tmpResult)
+					j <- j+1
+		}
+
+		sum <- sum + (tmpResult/length(utfResult))
+		#print(sum)
+		i <- i+1
+}
+####average uft of vulnerability keyword matrix was found
+averageUtf <- sum/length(yazi[,1])
+#####################
+##############
+#####calculate difference between vulnerability and code word columns
+yazi <- read.table(dataPath,header=TRUE,sep = ',')
+lengthM <- length(yazi[,1])
+tmpResult <- 0
+sum <- 0
+i <- 1
+j <- 1
+utfList <- c()
+while(i<=lengthM)
+{
+		utfResult <- utf8ToInt(yazi[i,1])
+		j <- 1
+		tmpResult <- 0
+		while(j <= length(utfResult))
+		{
+					tmpResult <- tmpResult+ utfResult[j]
+					j <- j+1
+		}
+
+		utfRow <- tmpResult/length(utfResult)
+		utfList <- append(utfList, utfRow)
+		print(utfRow)
+		i <- i+1
+}
+####create vulnerability label column, thereby seeing difference between utf scores
+
+
+
+i <- 1
+labels <- c()
+tmpResultList <- c()
+while(i<=length(utfList))
+{
+	tmpResult <- abs(utfList[i]-averageUtf)	
+tmpResultList <- append(tmpResultList,tmpResult)
+
+i <- i+1
+}
+i <- 1
+	tmpResultList <- tmpResultList %>% replace(is.na(.), runif(1,0,0.04))
+while(i<=length(tmpResultList))
+{
+
+	#chage comparison value depending on the stablity of label vector
+	if(tmpResultList[i]<=0.1)
+	labels <- append(labels,1)
+	else
+	labels <- append(labels,0)
+	i <- i+1
+}
+
+###########################################
+############################################
+
+
+############################################
+yazi <- yazi[,-1]
+#yazi <- scale(yazi)
+library(deepnet)
+yazi = as.matrix(yazi)
+yazi <- matrix(as.numeric(yazi),ncol=6)
+#decide labels by checking second column
+i <- 1
+while(i<=length(labels)){
+if(yazi[i,2]>0.26)
+labels[i]<-1
+else
+labels[i] <-0
+i <- i+1
+}
+
+############for cross validation#########################
+#library("caret")
+#random_sample <- createDataPartition(labels, p = 0.9, list = FALSE)
+#train <- yazi[random_sample,]
+#test <- yazi[-random_sample,]
+#trainLabel <- labels[random_sample]
+#testLabel <- labels[-random_sample]
+#nn <- nn.train(train, trainLabel, hidden = c(5))
+#yy = nn.predict(nn, test)
+#print(head(yy))
+
+#yhat = matrix(0,length(yy),1)
+#yhat[which(yy > mean(yy))] = 1
+#yhat[which(yy <= mean(yy))] = 0
+#cm = table(testLabel,yhat)
+#print(cm)
+#######################################
+nn <- nn.train(yazi, labels, hidden = c(5))
+yy = nn.predict(nn, yazi)
+#print(head(yy))
+
+yhat = matrix(0,length(yy),1)
+yhat[which(yy > mean(yy))] = 1
+yhat[which(yy <= mean(yy))] = 0
+cm = table(labels,yhat)
+print(cm)
+
+##############################
+precision <- (cm[4])/(cm[4]+cm[2])
+recall <- cm[4]/(cm[4]+cm[3])
+fnr <- cm[4]/(cm[4]+cm[3])	
+f1 <- 2 * ((precision * recall) / (precision + recall))
+accuracy <- (cm[1]+cm[4])/(cm[1]+cm[2]+cm[3]+cm[4])
+precision
+recall
+f1
+accuracy
